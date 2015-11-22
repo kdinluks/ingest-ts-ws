@@ -134,12 +134,14 @@ def on_open(ws):
                 # Verifies if the value is a valid number or don't add the point
                 try:
                     value = float(row[vi])
-                    tstamp = calendar.timegm(time.strptime(row[tsi], timestamp)) * 1000
-                    datapoints.append([tstamp, value])
+                    
                 except:
                     value = 0.0
                     i += 1
                     continue
+
+                tstamp = calendar.timegm(time.strptime(row[tsi], timestamp)) * 1000
+                datapoints.append([tstamp, value])
 
                 i += 1
 
