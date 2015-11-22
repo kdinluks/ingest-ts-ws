@@ -9,7 +9,6 @@ import argparse
 import textwrap
 import requests
 import json
-import base64
 import yaml
 from collections import defaultdict
 
@@ -220,6 +219,20 @@ if __name__ == "__main__":
                 uaaSecret = config["uaa"]["secret"]
                 uaaUsername = config["uaa"]["username"]
                 uaaPassword = config["uaa"]["password"]
+                if "csv" in config.keys():
+                    csvConfig = config["csv"]
+                    if "delimiter" in csvConfig.keys():
+                        delimiter = csvConfig["delimiter"]
+                    if "timestamp" in csvConfig.keys():
+                        timestamp = csvConfig["timestamp"]
+                    if "packetsize" in csvConfig.keys():
+                        dpsize = csvConfig["packetsize"]
+                    if "indexes" in csvConfig.keys():
+                        eni = csvConfig["indexes"]["equipment"]
+                        tni = csvConfig["indexes"]["tag"]
+                        tsi = csvConfig["indexes"]["timestamp"]
+                        vi = csvConfig["indexes"]["value"]
+                print("Configuration file " + yamlFile + " loaded")
         else:
             print("The file " + yamlFile + " doesn't exist or you don't have permission to access it")
             print("Terminating...")

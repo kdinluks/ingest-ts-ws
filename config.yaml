@@ -8,3 +8,12 @@ uaa:
   username: ""
   password: ""
   token: ""
+csv:
+  delimiter: ";"
+  timestamp: "%m/%d/%Y %I:%M:%S %p"
+  packetsize: 500
+  indexes: 
+    equipment: 1
+    tag: 2
+    timestamp: 3
+    value: 4
