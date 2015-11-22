@@ -1,0 +1,10 @@
+time-series:
+  uri: ""
+  zone: ""
+uaa:
+  uri: ""
+  client: ""
+  secret: ""
+  username: ""
+  password: ""
+  token: ""

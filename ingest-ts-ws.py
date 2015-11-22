@@ -7,6 +7,10 @@ import csv
 import os
 import argparse
 import textwrap
+import requests
+import json
+import base64
+import yaml
 from collections import defaultdict
 
 # Parser for input arguments
@@ -39,9 +43,14 @@ parser = argparse.ArgumentParser(
         '''))
 
 parser.add_argument("data", help="csv file with time-series data")
-parser.add_argument("tss", help="time-series wss url")
-parser.add_argument("zone", help="time-series service instance id")
-parser.add_argument("token", help="predix cloud UAA token")
+parser.add_argument("-tss", dest='tss', default='', help="time-series wss url")
+parser.add_argument("-zone", dest='zone', default='', help="time-series service instance id")
+parser.add_argument("-uaa", dest='uaa', default='', help="predix UAA issuerId (Token URI)")
+parser.add_argument("-client", dest='client', default='', help="predix UAA Client")
+parser.add_argument("-secret", dest='secret', default='', help="predix UAA Client secret")
+parser.add_argument("-username", dest='username', default='', help="username from Predix UAA with access to time-series")
+parser.add_argument("-password", dest='password', default='', help="password from Predix UAA with access to time-series")
+parser.add_argument("-token", dest='token', default='', help="specify the predix UAA token with access to time-series")
 parser.add_argument("-d", "--delimiter", dest='delimiter', default=';', help="specify the delimiter character. Default is ;")
 parser.add_argument("-t", "--timestamp", dest='timestamp', default="%m/%d/%Y %I:%M:%S %p", help="specify the timestamp format following python documentation for the function  strptime(). Default is '%m/%d/%Y %I:%M:%S %p'")
 parser.add_argument("-s", "--datapoints", dest='dpsize', default='500', help="specify the number of points per message. Default is 500")
@@ -49,12 +58,18 @@ parser.add_argument("-ei", dest='eni', default='1', help="specify the index of t
 parser.add_argument("-ti", dest='tni', default='2', help="specify the index of the tag name column in the csv")
 parser.add_argument("-di", dest='tsi', default='3', help="specify the index of the timestamp column in the csv")
 parser.add_argument("-vi", dest='vi', default='4', help="specify the index of the value column in the csv")
+parser.add_argument("-y", dest='yaml', default='', help="specify a yaml file with the configuration")
 args = parser.parse_args()
 
 data = args.data
-tss = args.tss
-zone = args.zone
-token = args.token
+tsUri = args.tss
+tsZone = args.zone
+uaaUri = args.uaa
+uaaUsername = args.username
+uaaSecret = args.secret
+uaaClient = args.client
+uaaPassword = args.password
+uaaToken = args.token
 delimiter = args.delimiter
 timestamp = args.timestamp
 dpsize = int(args.dpsize)
@@ -62,17 +77,18 @@ eni = int(args.eni)
 tni = int(args.tni)
 tsi = int(args.tsi)
 vi = int(args.vi)
+yamlFile = args.yaml
 
 def on_message(ws, message):
-    if message["statuscode"] != 202:
+    if json.JSONDecoder().decode(message)["statusCode"] != 202:
         print("Error sending packet to time-series service")
-        print("Message: " + message)
+        print(message)
         sys.exit(1)
     else:
-        print("Message: " + message)
+        print("Packet Sent")
 
 def on_error(ws, error):
-    print("Error: " + error)
+    print(error)
 
 def on_close(ws):
     print("--- Socket Closed ---")
@@ -179,17 +195,50 @@ def sendPayload(ws, payloads):
 
     thread.start_new_thread(run, ())
 
-def sendExcursions(excursions):
-    print excursions
-    pass
+def getToken():
+    uri = uaaUri
+    payload = {"grant_type": "password", "username": uaaUsername, "password": uaaPassword}
+    auth = requests.auth.HTTPBasicAuth(uaaClient, uaaSecret)
+    request = requests.post(uri, data=payload, auth=auth)
+    if request.status_code == requests.codes.ok:
+        return json.JSONDecoder().decode(request.text)["access_token"]
+    else:
+        print("Error requesting token")
+        request.raise_for_status()
 
 
 if __name__ == "__main__":
+    if yamlFile != '':
+        if os.path.isfile(yamlFile):
+            with open(yamlFile, 'r') as stream:
+                config = yaml.load(stream)
+                tsUri = config["time-series"]["uri"]
+                tsZone = config["time-series"]["zone"]
+                uaaToken = config["uaa"]["token"]
+                uaaUri = config["uaa"]["uri"]
+                uaaClient = config["uaa"]["client"]
+                uaaSecret = config["uaa"]["secret"]
+                uaaUsername = config["uaa"]["username"]
+                uaaPassword = config["uaa"]["password"]
+        else:
+            print("The file " + yamlFile + " doesn't exist or you don't have permission to access it")
+            print("Terminating...")
+            sys.exit(1)
+    elif tsUri == '' or tsZone == '' or uaaUri == '' or uaaClient == '' or uaaSecret == '' or uaaUsername == '' or uaaPassword == '':
+        print("Please either use a yaml file with option -y")
+        print("or specify the parements -tss -zone -uaa -client -secre -username -password")
+        print("Terminating...")
+        sys.exit(1)
+
     websocket.enableTrace(True)
-    host = tss
+    host = tsUri
+
+    if uaaToken == '':
+        uaaToken = getToken()
+
     headers = {
-                'Authorization:bearer ' + token,
-                'Predix-Zone-Id:' + zone,
+                'Authorization:bearer ' + uaaToken,
+                'Predix-Zone-Id:' + tsZone,
                 'Origin:http://localhost/'
     }
     ws = websocket.WebSocketApp(
