@@ -23,18 +23,18 @@ parser = argparse.ArgumentParser(
             The csv file must have the following columns:
               - Equipment name
                 The default column index is 1
-                You can specify a new column index using the option -ei
+                You can specify a new column index using the option --ei
                 Keep in mind the columns index start at 0
               - Tag name
                 The default column index is 2
-                You can specify a new column index using the option -ti
+                You can specify a new column index using the option --ti
               - Timestamp in the format month / day / year hour:minute:seconds AM/PM
                 The default column index is 3
-                You can specify a new column index using the option -di
+                You can specify a new column index using the option --di
                 You can also specify a new timestamp format by using the option -t
               - Value
                 The default column index is 4
-                You can specify a new column index using the option -vi
+                You can specify a new column index using the option --vi
         '''),
     epilog=textwrap.dedent('''\
         -------------------------------------------------------------------------------
@@ -42,21 +42,21 @@ parser = argparse.ArgumentParser(
         '''))
 
 parser.add_argument("data", help="csv file with time-series data")
-parser.add_argument("-tss", dest='tss', default='', help="time-series wss url")
-parser.add_argument("-zone", dest='zone', default='', help="time-series service instance id")
-parser.add_argument("-uaa", dest='uaa', default='', help="predix UAA issuerId (Token URI)")
-parser.add_argument("-client", dest='client', default='', help="predix UAA Client")
-parser.add_argument("-secret", dest='secret', default='', help="predix UAA Client secret")
-parser.add_argument("-username", dest='username', default='', help="username from Predix UAA with access to time-series")
-parser.add_argument("-password", dest='password', default='', help="password from Predix UAA with access to time-series")
-parser.add_argument("-token", dest='token', default='', help="specify the predix UAA token with access to time-series")
+parser.add_argument("--tss", dest='tss', default='', help="time-series wss url")
+parser.add_argument("--zone", dest='zone', default='', help="time-series service instance id")
+parser.add_argument("--uaa", dest='uaa', default='', help="predix UAA issuerId (Token URI)")
+parser.add_argument("--client", dest='client', default='', help="predix UAA Client")
+parser.add_argument("--secret", dest='secret', default='', help="predix UAA Client secret")
+parser.add_argument("--username", dest='username', default='', help="username from Predix UAA with access to time-series")
+parser.add_argument("--password", dest='password', default='', help="password from Predix UAA with access to time-series")
+parser.add_argument("--token", dest='token', default='', help="specify the predix UAA token with access to time-series")
 parser.add_argument("-d", "--delimiter", dest='delimiter', default=';', help="specify the delimiter character. Default is ;")
 parser.add_argument("-t", "--timestamp", dest='timestamp', default="%m/%d/%Y %I:%M:%S %p", help="specify the timestamp format following python documentation for the function  strptime(). Default is '%m/%d/%Y %I:%M:%S %p'")
 parser.add_argument("-s", "--datapoints", dest='dpsize', default='500', help="specify the number of points per message. Default is 500")
-parser.add_argument("-ei", dest='eni', default='1', help="specify the index of the equipment name column in the csv")
-parser.add_argument("-ti", dest='tni', default='2', help="specify the index of the tag name column in the csv")
-parser.add_argument("-di", dest='tsi', default='3', help="specify the index of the timestamp column in the csv")
-parser.add_argument("-vi", dest='vi', default='4', help="specify the index of the value column in the csv")
+parser.add_argument("--ei", dest='eni', default='1', help="specify the index of the equipment name column in the csv")
+parser.add_argument("--ti", dest='tni', default='2', help="specify the index of the tag name column in the csv")
+parser.add_argument("--di", dest='tsi', default='3', help="specify the index of the timestamp column in the csv")
+parser.add_argument("--vi", dest='vi', default='4', help="specify the index of the value column in the csv")
 parser.add_argument("-y", dest='yaml', default='', help="specify a yaml file with the configuration")
 args = parser.parse_args()
 
