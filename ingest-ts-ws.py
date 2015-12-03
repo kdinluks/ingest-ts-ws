@@ -11,7 +11,7 @@ import textwrap
 import requests
 import json
 import yaml
-import logger
+import logging
 from collections import defaultdict
 
 # Global variables
@@ -57,7 +57,7 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
 
             # If current tag name is different than the tag name from the file, define another tag name
             elif meter != equipname + "_" + tagname:
-                payloads.append(payload(ws, meter, datapoints, m))
+                payloads.append(payload(meter, datapoints, m))
                 meter = equipname + "_" + tagname
                 m += 1
                 i = 0
@@ -97,7 +97,7 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
             payloads.append(payload(meter, datapoints, m+1))
 
         # Send payloads
-        sendPayload(ws, payloads)
+        # sendPayload(ws, payloads)
 
         return payloads
 
@@ -220,7 +220,7 @@ def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret
 
 if __name__ == "__main__":
     global PAYLOADS
-    logger.basicConfig()
+    logging.basicConfig()
     # Parser for input arguments
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -290,5 +290,4 @@ if __name__ == "__main__":
         print("Ingesting file: " + data)
         tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi =  loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi)
         PAYLOADS = prepareData(PAYLOADS, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi)
-
-    openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri)
+        openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri)
