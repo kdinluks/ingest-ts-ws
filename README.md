@@ -17,11 +17,11 @@
                 The default column index is 4
                 You can specify a new column index using the option --vi
 
-## To run the script for 1 file
+#### To run the script for 1 file
 ```bash
 	python ingest-ts-ws.py <csv-file> --tss <wss-url> --zone <instance-id> --token <token>
 ```
-## To run the script for mote than 1 file
+#### To run the script for more than 1 file
 ```bash
     python ingest-ts-ws.py <csv-file1> <csv-file2> <csv-file3> --tss <wss-url> --zone <instance-id> --token <token>
 ```
@@ -32,7 +32,7 @@ Where:
             - <instance-id> the instance id of your instance of the time-series service
             - <token> the Bearer token from the UAA instance used by the time-series service
 
-### Optionally you can pass the following arguments:
+##### Optionally you can pass the following arguments:
 
             -d or --delimiter : used to specify the delimiter used in the csv file. The default is ";".
             -t or --timestamp : used to specify the timestamp format following the python documentation for the function  strptime(). The default is '%m/%d/%Y %I:%M:%S %p'.
@@ -46,19 +46,20 @@ Where:
             -k : used to specify the index of the column that contains the meter name.
             Note, if you specify -k you don't need to specify -ei and -ti as they won't be used.
 
-### Alternatively you can pass a Yaml configuration following the config.yml template
+##### Alternatively you can pass a Yaml configuration following the config.yml template
 ```bash
     python ingest-ts-ws.py <csv-file> -y <yaml-file>
 ```
 
-### Let the script fetch the token
+##### Let the script fetch the token
 
-        If you don't want to worry about fetching the token prior to running the script, you can pass the client, user and UAA information either in the yaml configuration file or by using the script arguments, and the script will fetch the token for you.
-        In order for the script to be able to fetch the token, the client must have the password grant type authorized.
+If you don't want to worry about fetching the token prior to running the script, you can pass the client, user and UAA information either in the yaml configuration file or by using the script arguments, and the script will fetch the token for you.
+In order for the script to be able to fetch the token, the client must have the password grant type authorized.
 
-        To pass the client, user and UAA information using a yaml file just follow the config.yml template.
+To pass the client, user and UAA information using a yaml file just follow the config.yml template.
 
-        To pass the information using script arguments:
+To pass the information using script arguments:
+
             --uaa : used to specify the predix UAA issuerId (Token URI)
             --client : used to specify UAA Client
             --secret : used to specify UAA Secret
