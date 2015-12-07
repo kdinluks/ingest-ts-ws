@@ -31,10 +31,10 @@ def on_error(ws, error):
 def on_close(ws):
     print("--- Socket Closed ---")
 
-def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi):
+def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername):
     if os.path.isfile(data):
         df = pandas.read_csv(data, sep=delimiter, header=None)
-        df.sort_values(by=[tsi], ascending=True, inplace=True)
+        df.sort_values(by=[eni, tni], ascending=True, inplace=True)
 
         i = 0
         m = 1
@@ -52,16 +52,29 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
             tagname = row[tni]
             equipname = row[eni]
 
-            if meter == "":
-                meter = equipname + "_" + tagname
+            if metername == -1:
+                if meter == "":
+                    meter = equipname + concat + tagname
 
-            # If current tag name is different than the tag name from the file, define another tag name
-            elif meter != equipname + "_" + tagname:
-                payloads.append(payload(meter, datapoints, m))
-                meter = equipname + "_" + tagname
-                m += 1
-                i = 0
-                datapoints = []
+                # If current tag name is different than the tag name from the file, define another tag name
+                elif meter != equipname + concat + tagname:
+                    payloads.append(payload(meter, datapoints, m))
+                    meter = equipname + concat + tagname
+                    m += 1
+                    i = 0
+                    datapoints = []
+
+            else:
+                if meter == "":
+                    meter = row[metername]
+
+                # If current tag name is different than the tag name from the file, define another tag name
+                elif meter != row[metername]:
+                    payloads.append(payload(meter, datapoints, m))
+                    meter = row[metername]
+                    m += 1
+                    i = 0
+                    datapoints = []
 
             # Add the last point in the packet and exit the loop
             if i >= dpsize:
@@ -95,9 +108,6 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
         # Append last packet to payload list
         if i > 0:
             payloads.append(payload(meter, datapoints, m+1))
-
-        # Send payloads
-        # sendPayload(ws, payloads)
 
         return payloads
 
@@ -178,7 +188,7 @@ def openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri):
     ws.on_open = sendPayload
     ws.run_forever()
 
-def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi):
+def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername):
     if yamlFile != '':
         if os.path.isfile(yamlFile):
             with open(yamlFile, 'r') as stream:
@@ -204,6 +214,10 @@ def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret
                         tni = int(csvConfig["indexes"]["tag"])
                         tsi = int(csvConfig["indexes"]["timestamp"])
                         vi = int(csvConfig["indexes"]["value"])
+                    if "concatchar" in csvConfig.keys():
+                        concat = csvConfig["concatchar"]
+                    if "metername" in csvConfig.keys():
+                        metername = csvConfig["metername"]
 
                 print("Configuration file " + yamlFile + " loaded")
         else:
@@ -216,7 +230,7 @@ def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret
         print("Terminating...")
         sys.exit(1)
 
-    return tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi
+    return tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername
 
 if __name__ == "__main__":
     global PAYLOADS
@@ -265,6 +279,8 @@ if __name__ == "__main__":
     parser.add_argument("--ti", dest='tni', default='2', help="specify the index of the tag name column in the csv")
     parser.add_argument("--di", dest='tsi', default='3', help="specify the index of the timestamp column in the csv")
     parser.add_argument("--vi", dest='vi', default='4', help="specify the index of the value column in the csv")
+    parser.add_argument("-c", dest='concat', default='_', help="specify the character used in the concatenation for the meter name")
+    parser.add_argument("-k", dest='skipmeter', default='-1', help="specify the index for the meter name. (Don't need to specify equipment and tag columns)")
     parser.add_argument("-y", dest='yaml', default='', help="specify a yaml file with the configuration")
     args = parser.parse_args()
 
@@ -285,9 +301,12 @@ if __name__ == "__main__":
     tsi = int(args.tsi)
     vi = int(args.vi)
     yamlFile = args.yaml
+    concat = args.concat
+    metername = int(args.skipmeter)
 
     for data in files:
         print("Ingesting file: " + data)
-        tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi =  loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi)
-        PAYLOADS = prepareData(PAYLOADS, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi)
+        tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername =  loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername)
+        PAYLOADS = prepareData(PAYLOADS, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername)
         openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri)
+    print("All " + str(len(files)) + " files ingested")

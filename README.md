@@ -1,5 +1,5 @@
 # ingest-ts-ws
-### Python script to ingest data from a csv file into Predix time-series service in Predix Cloud.
+### Python script to ingest data from a csv file, or a collection of files, into Predix time-series service in Predix Cloud.
 
             The csv file must have the following columns:
               - Equipment name
@@ -17,9 +17,13 @@
                 The default column index is 4
                 You can specify a new column index using the option --vi
 
-## To run the script
+## To run the script for 1 file
 ```bash
 	python ingest-ts-ws.py <csv-file> --tss <wss-url> --zone <instance-id> --token <token>
+```
+## To run the script for mote than 1 file
+```bash
+    python ingest-ts-ws.py <csv-file1> <csv-file2> <csv-file3> --tss <wss-url> --zone <instance-id> --token <token>
 ```
 Where:
 
@@ -37,6 +41,10 @@ Where:
             --ti : used to specify the tag name column index as explained above.
             --di : used to specify the timestamp column index as explained above.
             --vi : used to specify the value column index as explained above.
+            -c : used to specify the character used in the concatenation of equipment name and tag name to create the meter name.
+            The default is "_"
+            -k : used to specify the index of the column that contains the meter name.
+            Note, if you specify -k you don't need to specify -ei and -ti as they won't be used.
 
 ### Alternatively you can pass a Yaml configuration following the config.yml template
 ```bash

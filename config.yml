@@ -10,8 +10,10 @@ uaa:
   token: ""
 csv:
   delimiter: ";"
+  concatchar: "_"
   timestamp: "%m/%d/%Y %I:%M:%S %p"
   packetsize: 500
+  metername: -1
   indexes: 
     equipment: 1
     tag: 2
