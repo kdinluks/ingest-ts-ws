@@ -12,6 +12,7 @@ import requests
 import json
 import yaml
 import logging
+import math
 from collections import defaultdict
 
 # Global variables
@@ -21,7 +22,7 @@ def on_message(ws, message):
     if json.JSONDecoder().decode(message)["statusCode"] != 202:
         print("Error sending packet to time-series service")
         print(message)
-        sys.exit(1)
+        #sys.exit(1)
     else:
         print("Packet Sent")
 
@@ -34,13 +35,18 @@ def on_close(ws):
 def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername):
     if os.path.isfile(data):
         df = pandas.read_csv(data, sep=delimiter, header=None)
-        df.sort_values(by=[eni, tni], ascending=True, inplace=True)
+        if eni == -1:
+            df.sort_values(by=[tni], ascending=True, inplace=True)
+        else:
+            df.sort_values(by=[eni, tni], ascending=True, inplace=True)
 
         i = 0
         m = 1
         datapoints = []
-        tagname = data.rsplit('/',1)[1].replace('.csv', '')
-        equipname = ""
+        #tagname = data.rsplit('/',1)[1].replace('.csv', '')
+        #equipname = "AT-PBE-3152"
+        if eni == -1 and metername == -1:
+            equipname = raw_input('Enter the equipment name for file ' + data + ': ' )
         meter = ""
         # payloads = []
 
@@ -50,32 +56,43 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
             # Create the packets to send it over WS
             # Define the tag name if none exists
             tagname = row[tni]
-            equipname = row[eni]
+            
+            if eni != -1:
+                equipname = row[eni]
 
             if metername == -1:
                 if meter == "":
                     meter = equipname + concat + tagname
+                    print("Meter name: " + meter)
 
                 # If current tag name is different than the tag name from the file, define another tag name
                 elif meter != equipname + concat + tagname:
                     payloads.append(payload(meter, datapoints, m))
                     meter = equipname + concat + tagname
+                    print("Meter name: " + meter)
                     m += 1
                     i = 0
                     datapoints = []
 
             else:
                 if meter == "":
-                    meter = row[metername]
+                    if type(metername) is str:
+                        meter = metername
+                        print("Meter name: " + meter)
+                    else:
+                        meter = row[metername]
+                        print("Meter name: " + meter)
 
                 # If current tag name is different than the tag name from the file, define another tag name
-                elif meter != row[metername]:
-                    payloads.append(payload(meter, datapoints, m))
-                    meter = row[metername]
-                    m += 1
-                    i = 0
-                    datapoints = []
-
+                elif type(metername) is not str:
+                    if meter != row[metername]:
+                        payloads.append(payload(meter, datapoints, m))
+                        meter = row[metername]
+                        print("Meter name: " + meter)
+                        m += 1
+                        i = 0
+                        datapoints = []
+                        
             # Add the last point in the packet and exit the loop
             if i >= dpsize:
                 payloads.append(payload(meter, datapoints, m))
@@ -86,7 +103,10 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
             # Verifies if the value is a valid number or don't add the point
             try:
                 value = float(row[vi])
+                if math.isnan(value):
+                    continue
             except:
+                print("Invalid reading: " + row)
                 value = 0.0
                 i += 1
                 continue
@@ -97,7 +117,7 @@ def prepareData(payloads, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret,
                 try:
                     tstamp = calendar.timegm(time.strptime(row[tsi], timestamp+".%f")) * 1000
                 except:
-                    print("Error converting date using the provided time stamp")
+                    print("Error converting date " + row[tsi] + " using the provided time stamp " + timestamp)
                     print("Terminating...")
                     sys.exit(1)
 
@@ -170,13 +190,13 @@ def getToken(uaaUri, uaaUsername, uaaPassword, uaaClient, uaaSecret):
 def openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri):
     if uaaToken == '':
         uaaToken = getToken(uaaUri, uaaUsername, uaaPassword, uaaClient, uaaSecret)
-
-    websocket.enableTrace(False)
+        
+    #websocket.enableTrace(False)
     host = tsUri
     headers = {
                 'Authorization:bearer ' + uaaToken,
                 'Predix-Zone-Id:' + tsZone,
-                'Origin:http://localhost/'
+                'Origin:http://127.0.0.1/'
     }
     ws = websocket.WebSocketApp(
                                 host,
@@ -188,7 +208,7 @@ def openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri):
     ws.on_open = sendPayload
     ws.run_forever()
 
-def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername):
+def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername, filename):
     if yamlFile != '':
         if os.path.isfile(yamlFile):
             with open(yamlFile, 'r') as stream:
@@ -218,6 +238,10 @@ def loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret
                         concat = csvConfig["concatchar"]
                     if "metername" in csvConfig.keys():
                         metername = csvConfig["metername"]
+                if "meters" in config.keys():
+                    metersConfig = config["meters"]
+                    if filename.split('_')[1] in metersConfig.keys():
+                        metername = metersConfig[filename.split('_')[1]]["metername"]
 
                 print("Configuration file " + yamlFile + " loaded")
         else:
@@ -304,9 +328,27 @@ if __name__ == "__main__":
     concat = args.concat
     metername = int(args.skipmeter)
 
-    for data in files:
+    #Check if input is a file/list of files or a folder
+    #If csv files pass it along
+    if files[0][len(files[0])-4:len(files[0])] == '.csv':
+        iterfiles = files
+    #If folder, get folder files and pass only csv files
+    else:
+        iterfiles = []
+        tempFiles = os.listdir(files[0])
+        for f in tempFiles:
+            try:
+                fExt = os.path.splitext(f)[1]
+                if fExt == '.csv':
+                    iterfiles.append(os.path.join(files[0],f))
+            except:
+                continue
+        
+    for data in iterfiles:
+        filename = os.path.split(data)[1]
+        PAYLOADS = []
         print("Ingesting file: " + data)
-        tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername =  loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername)
+        tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername =  loadFromYaml(yamlFile, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername, filename)
         PAYLOADS = prepareData(PAYLOADS, tsUri, tsZone, uaaToken, uaaUri, uaaClient, uaaSecret, uaaUsername, uaaPassword, delimiter, timestamp, dpsize, eni, tni, tsi, vi, concat, metername)
         openWSS(uaaToken, uaaUsername, uaaPassword, uaaClient, uaaSecret, tsUri)
     print("All " + str(len(files)) + " files ingested")
